@@ -1,0 +1,35 @@
+name: Auto Assign Reviewers
+
+on:
+  pull_request:
+    types: [opened, ready_for_review, reopened]
+
+jobs:
+  assign:
+    name: Request team review
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Request review from team
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          REPO_NAME="${{ github.event.repository.name }}"
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+          REPO="${{ github.repository }}"
+          PR_AUTHOR="${{ github.event.pull_request.user.login }}"
+
+          if [[ "$REPO_NAME" == pl-* ]]; then
+            TEAM="platform"
+          else
+            TEAM="developers"
+          fi
+
+          echo "PR #$PR_NUMBER in $REPO_NAME → requesting review from @Apination/$TEAM (author: $PR_AUTHOR)"
+
+          gh api -X POST \
+            "repos/$REPO/pulls/$PR_NUMBER/requested_reviewers" \
+            -f "team_reviewers[]=$TEAM" \
+            --silent
